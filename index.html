@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Monk Mode Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&family=Playfair+Display:wght@800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+
+    <div id="calendar-container"></div>
+
+    <!-- LEFT TOOLBAR: PDF, PNG, Mark Type -->
+    <div class="ui-layer ui-left">
+        <button class="btn-circ" title="Print to PDF" onclick="window.print()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"/>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                <rect x="6" y="14" width="12" height="8"/>
+            </svg>
+        </button>
+
+        <button class="btn-circ" title="Export PNG" id="export-png">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+            </svg>
+        </button>
+
+        <button class="btn-circ" title="Mark Style" onclick="document.getElementById('m-pop').classList.toggle('active')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+        </button>
+
+        <div class="popover" id="m-pop">
+            <strong>Mark Type</strong>
+            <label><input type="radio" name="mt" value="svg" checked> Classic X</label>
+            <label><input type="radio" name="mt" value="emoji"> Emoji <input type="text" id="e-val" style="width:30px" placeholder="🔥"></label>
+            <label><input type="radio" name="mt" value="img"> Image <input type="file" id="i-val" style="width:100%"></label>
+        </div>
+    </div>
+
+    <!-- RIGHT TOOLBAR: Mark today with X -->
+    <div class="ui-layer ui-right">
+        <button class="btn-circ btn-add" title="Mark today" id="add-today">
+            <svg viewBox="0 0 1100 975.6" fill="none">
+                <!-- Real X polygon -->
+                <polygon points="975.6,0 827.3,0 487.8,339.5 148.3,0 0,0 0,148.3 339.5,487.8 0,827.3 0,975.6 148.3,975.6 487.8,636.1 827.3,975.6 975.6,975.6 975.6,827.3 636.1,487.8 975.6,148.3" fill="#111"/>
+                <!-- Red plus badge top-right -->
+                <line x1="1020" y1="20" x2="1020" y2="140" stroke="#ff2a38" stroke-width="55" stroke-linecap="round"/>
+                <line x1="960" y1="80" x2="1080" y2="80" stroke="#ff2a38" stroke-width="55" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <div class="tooltip" id="add-tooltip"></div>
+    </div>
+
+    <script src="data.js"></script>
+    <script>
+        let uiState = { type: 'svg', emoji: '🔥', img: '' };
+        let grandTotal = 0;
+
+        function generateCalendar() {
+            const container = document.getElementById('calendar-container');
+            container.innerHTML = '';
+            grandTotal = 0;
+
+            CONFIG.months.forEach((monthData, index) => {
+                const monthIndex = CONFIG.month + index - 1;
+                const date = new Date(CONFIG.year, monthIndex, 1);
+                const startDay = date.getDay();
+                const daysInMonth = new Date(CONFIG.year, monthIndex + 1, 0).getDate();
+                const daysInPrevMonth = new Date(CONFIG.year, monthIndex, 0).getDate();
+
+                const monthScore = monthData.markedDays.length;
+                grandTotal += monthScore;
+                const pct = Math.round((monthScore / daysInMonth) * 100);
+                const circumference = 2 * Math.PI * 20;
+                const offset = circumference - (pct / 100) * circumference;
+
+                const page = document.createElement('div');
+                page.className = 'a4-page';
+                page.id = `page-${index}`;
+
+                page.innerHTML = `
+                    <header class="header">
+                        <div class="brand">MOOZINATION / ${monthData.name}</div>
+                        <div class="year">${CONFIG.year}</div>
+                    </header>
+                    <div class="title"><span class="red">MONK</span> MODE</div>
+                    <div class="weekdays">
+                        <span>SUNDAY</span><span>MONDAY</span><span>TUESDAY</span><span>WEDNESDAY</span><span>THURSDAY</span><span>FRIDAY</span><span>SATURDAY</span>
+                    </div>
+                    <div class="grid" id="grid-${index}"></div>
+                    <footer class="footer">
+                        <div class="footer-title">JUST <span class="red">SHOW UP</span></div>
+                        <div class="stats-bar">
+                            <span class="stat-item">MONTHLY: <strong>${monthScore}/${daysInMonth}</strong></span>
+                            <span class="stat-sep">·</span>
+                            <span class="stat-item">TOTAL: <strong>${grandTotal} DAYS</strong></span>
+                            <span class="stat-sep">·</span>
+                            <span class="stat-item progress-wrap">
+                                <svg class="progress-ring" viewBox="0 0 50 50">
+                                    <circle cx="25" cy="25" r="20" fill="none" stroke="#e0e0e0" stroke-width="4"/>
+                                    <circle cx="25" cy="25" r="20" fill="none" stroke="#ff2a38" stroke-width="4"
+                                        stroke-dasharray="${circumference.toFixed(2)}"
+                                        stroke-dashoffset="${offset.toFixed(2)}"
+                                        stroke-linecap="round"
+                                        transform="rotate(-90 25 25)"/>
+                                    <text x="25" y="29" text-anchor="middle" font-size="11" font-family="Montserrat,sans-serif" font-weight="900" fill="#111">${pct}%</text>
+                                </svg>
+                            </span>
+                        </div>
+                    </footer>
+                `;
+
+                container.appendChild(page);
+                const grid = document.getElementById(`grid-${index}`);
+
+                for (let i = 0; i < 35; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell' + (i % 7 === 0 ? ' sunday' : '');
+
+                    let dayNum;
+                    let isPrev = false;
+                    let isNext = false;
+
+                    if (i < startDay) {
+                        dayNum = daysInPrevMonth - (startDay - i - 1);
+                        isPrev = true;
+                    } else if (i >= startDay + daysInMonth) {
+                        dayNum = i - (startDay + daysInMonth) + 1;
+                        isNext = true;
+                    } else {
+                        dayNum = i - startDay + 1;
+                    }
+
+                    const labelCfg = monthData.labels?.find(l =>
+                        l.day === dayNum &&
+                        (isPrev ? l.isPrevMonth : !l.isPrevMonth && !isNext)
+                    );
+                    if (labelCfg) {
+                        cell.innerHTML += `<div class="label ${labelCfg.pos}">${labelCfg.text}</div>`;
+                    }
+
+                    const numSpan = document.createElement('div');
+                    numSpan.className = `number ${isPrev || isNext ? 'grey' : (i % 7 === 0 ? 'red' : '')}`;
+                    numSpan.innerText = dayNum;
+                    cell.appendChild(numSpan);
+
+                    if (!isPrev && !isNext && monthData.markedDays.includes(dayNum)) {
+                        const mc = document.createElement('div');
+                        mc.className = 'mark-container';
+                        if (uiState.type === 'svg') mc.innerHTML = `<svg class="mark-svg" viewBox="0 0 975.6 975.6"><polygon points="975.6,0 827.3,0 487.8,339.5 148.3,0 0,0 0,148.3 339.5,487.8 0,827.3 0,975.6 148.3,975.6 487.8,636.1 827.3,975.6 975.6,975.6 975.6,827.3 636.1,487.8 975.6,148.3"/></svg>`;
+                        else if (uiState.type === 'emoji') mc.innerHTML = `<span class="mark-emoji">${uiState.emoji}</span>`;
+                        else if (uiState.type === 'img') mc.innerHTML = `<img src="${uiState.img}" class="mark-img">`;
+                        cell.appendChild(mc);
+                    }
+
+                    grid.appendChild(cell);
+                }
+            });
+        }
+
+        // ── Add Today ─────────────────────────────────────────────────
+        document.getElementById('add-today').onclick = () => {
+            const today   = new Date();
+            const todayY  = today.getFullYear();
+            const todayM  = today.getMonth() + 1;
+            const todayD  = today.getDate();
+
+            let matched = false;
+
+            CONFIG.months.forEach((monthData, index) => {
+                const mi    = CONFIG.month + index - 1;
+                const realM = (mi % 12) + 1;
+                const realY = CONFIG.year + Math.floor(mi / 12);
+
+                if (realY === todayY && realM === todayM) {
+                    const marked      = monthData.markedDays;
+                    const daysInMonth = new Date(realY, realM, 0).getDate();
+
+                    // Next day to add = last marked + 1, or day 1 if nothing marked yet
+                    const lastMarked  = marked.length > 0 ? Math.max(...marked) : 0;
+                    const nextDay     = lastMarked + 1;
+
+                    // Cap at today and don't exceed month length
+                    const dayToAdd    = Math.min(nextDay, todayD, daysInMonth);
+
+                    if (dayToAdd < 1) {
+                        showTooltip(`Nothing to mark yet`);
+                        return;
+                    }
+
+                    if (marked.includes(dayToAdd)) {
+                        showTooltip(`Day ${dayToAdd} already marked ✓`);
+                        return;
+                    }
+
+                    if (nextDay > todayD) {
+                        showTooltip(`Can't mark future dates`);
+                        return;
+                    }
+
+                    marked.push(dayToAdd);
+                    marked.sort((a, b) => a - b);
+                    matched = true;
+                    generateCalendar();
+                    showTooltip(`Day ${dayToAdd} marked ✓`);
+                }
+            });
+
+            if (!matched) showTooltip(`Today not in calendar range`);
+        };
+
+        function showTooltip(msg) {
+            const t = document.getElementById('add-tooltip');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2200);
+        }
+
+        // ── Listeners ─────────────────────────────────────────────────
+        document.getElementsByName('mt').forEach(r => r.onchange = e => { uiState.type = e.target.value; generateCalendar(); });
+        document.getElementById('e-val').oninput = e => { uiState.emoji = e.target.value || '🔥'; generateCalendar(); };
+        document.getElementById('i-val').onchange = e => {
+            const r = new FileReader();
+            r.onload = f => { uiState.img = f.target.result; generateCalendar(); };
+            r.readAsDataURL(e.target.files[0]);
+        };
+
+        document.getElementById('export-png').onclick = async () => {
+            const pages = document.querySelectorAll('.a4-page');
+            for (let i = 0; i < pages.length; i++) {
+                const canvas = await html2canvas(pages[i], { scale: 3 });
+                const link = document.createElement('a');
+                link.download = `monk-mode-p${i + 1}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            }
+        };
+
+        generateCalendar();
+    </script>
+</body>
+</html>
