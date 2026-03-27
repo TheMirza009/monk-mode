@@ -10,7 +10,7 @@ const CONFIG = {
     // You can add as many months as you want; each gets its own A4 page.
     months: [
         {
-            name: "JANUARY",
+            name: "MARCH",
             markedDays: [17, 18, 19, 20, 21, 22],
             // Custom labels for this specific month
             labels: [
